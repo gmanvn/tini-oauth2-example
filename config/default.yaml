@@ -1,0 +1,8 @@
+## OAuth Provider
+provider:
+  port: 4000
+
+## MongoDB
+mongo:
+  connection: mongodb://localhost:27017/oauth-example
+

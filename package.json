@@ -26,6 +26,7 @@
     "fibrous": "~0.3.3",
     "oauth2orize": "~1.0.1",
     "js-yaml": "~3.0.2",
-    "express": "~4.0.0"
+    "express": "~4.0.0",
+    "config": "~0.4.35"
   }
 }
