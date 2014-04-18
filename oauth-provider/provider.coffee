@@ -5,6 +5,10 @@ fibrous = require 'fibrous'
 login = require 'connect-ensure-login'
 passport = require('passport')
 
+require './model-grant.coffee'
+
+
+
 class Provider
 
   @uid = uid = ()->
@@ -17,13 +21,15 @@ class Provider
   defaultRenderFunction = (req, res)->
     res.render('dialog', { transactionID: req.oauth2.transactionID, user: req.user, client: req.oauth2.client })
 
+
+
   constructor: (config)->
     ## normalize parameters
     throw new Error 'Your argument is invalid: need config object' unless config?
     @userModelName = config.naming?.model or 'user'
     @clientModelName = config.naming?.model or 'client'
-    @grantsModelName = config.naming?.grant or 'grant'
-    @accessTokenModelName = config.naming?.accessToken or 'accessToken'
+    @grantsModelName = ###config.naming?.grant or### 'grant'
+    @accessTokenModelName = ###config.naming?.accessToken or### 'accessToken'
 
     @renderFunction = config.renderFunction or defaultRenderFunction
 
@@ -154,3 +160,5 @@ class Provider
       @server.token(),
       @server.errorHandler()
     ]
+
+module.exports = Provider

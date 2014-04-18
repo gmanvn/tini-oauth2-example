@@ -1,0 +1,30 @@
+//
+   Created by tung on 18/04/2014.
+
+doctype html5
+html
+    head
+    body
+        p= 'hi ' + user.name
+        p
+            b= client.name
+            | is requesting access to your account
+        form
+            input(
+                name="transaction_id"
+                type="hidden"
+                value=transactionID
+            )
+
+            input(
+                type="submit"
+                value="Allow"
+                id="allow"
+            )
+
+            input(
+                type="submit"
+                value="Deny"
+                id="deny"
+                name="cancel"
+            )
