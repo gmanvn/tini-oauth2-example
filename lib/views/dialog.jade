@@ -9,7 +9,7 @@ html
         p
             b= client.name
             | is requesting access to your account
-        form
+        form(action="/dialog/authorize/decision", method="POST")
             input(
                 name="transaction_id"
                 type="hidden"

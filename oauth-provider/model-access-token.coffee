@@ -7,4 +7,4 @@ schema = new mongoose.Schema {
 }
 
 
-model = mongoose.model 'grant', schema
+model = mongoose.model 'accessToken', schema

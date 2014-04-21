@@ -2,10 +2,11 @@ _ = require 'lodash'
 mongoose = require 'mongoose'
 oauth2orize = require 'oauth2orize'
 fibrous = require 'fibrous'
-login = require 'connect-ensure-login'
+ensureLogin = require 'connect-ensure-login'
 passport = require('passport')
 
 require './model-grant.coffee'
+require './model-access-token.coffee'
 
 
 
@@ -28,8 +29,8 @@ class Provider
     throw new Error 'Your argument is invalid: need config object' unless config?
     @userModelName = config.naming?.model or 'user'
     @clientModelName = config.naming?.model or 'client'
-    @grantsModelName = ###config.naming?.grant or### 'grant'
-    @accessTokenModelName = ###config.naming?.accessToken or### 'accessToken'
+    @grantsModelName = 'grant'
+    @accessTokenModelName = 'accessToken'
 
     @renderFunction = config.renderFunction or defaultRenderFunction
 
@@ -45,10 +46,10 @@ class Provider
     @server = oauth2orize.createServer()
 
     ## register serialize/deserialize functions (easier for inheritance)
-    @server.serializeClient ()->
+    @server.serializeClient ()=>
       @serialize arguments...
 
-    @server.deserializeClient ()->
+    @server.deserializeClient ()=>
       @deserialize arguments...
 
     ## register grant code
@@ -80,7 +81,7 @@ class Provider
 
     ## exchange grant for access token
     @server.exchange oauth2orize.exchange.code (client, code, redirectURI, done)=>
-      @db.grant.find code, (err, grant)=>
+      @db.grant.findOne {code}, (err, grant)=>
         return done err if err
         return done err, false if client.id isnt grant.client or redirectURI isnt grant.redirectURI
 
@@ -127,17 +128,17 @@ class Provider
   ## deserialize client from session storage (can be overwrite)
   deserialize: (id, done)->
     ## get client (consumer)
-    @db.client.find id, (err, client)->
+    @db.client.findById id, (err, client)->
       return done err if err
       done null, client
 
 
   authorization: ->
     [
-      login.ensureLogin()
+      ensureLogin.ensureLoggedIn()
 
-      @server.authorization (clientID, redirectURI, done)=>
-        @db.client.findById clientID, (err, client)->
+      @server.authorization (clientId, redirectURI, done)=>
+        @db.client.findOne {clientId}, (err, client)->
           return done err if err
           ## WARNING: For security purposes, it is highly advisable to check that
           ##          redirectURI provided by the client matches one registered with
@@ -150,7 +151,7 @@ class Provider
 
   decision: ->
     [
-      login.ensureLogin()
+      ensureLogin.ensureLoggedIn()
       @server.decision()
     ]
 
