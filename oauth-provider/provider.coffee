@@ -5,9 +5,6 @@ fibrous = require 'fibrous'
 ensureLogin = require 'connect-ensure-login'
 passport = require('passport')
 
-require './model-grant.coffee'
-require './model-access-token.coffee'
-
 
 
 class Provider
@@ -27,19 +24,7 @@ class Provider
   constructor: (config)->
     ## normalize parameters
     throw new Error 'Your argument is invalid: need config object' unless config?
-    @userModelName = config.naming?.model or 'user'
-    @clientModelName = config.naming?.model or 'client'
-    @grantsModelName = 'grant'
-    @accessTokenModelName = 'accessToken'
-
     @renderFunction = config.renderFunction or defaultRenderFunction
-
-    ## init models
-    @db =
-      user: mongoose.model @userModelName
-      client: mongoose.model @clientModelName
-      grant: mongoose.model @grantsModelName
-      accessToken: mongoose.model @accessTokenModelName
 
 
     ## init oauth server
@@ -54,98 +39,24 @@ class Provider
 
     ## register grant code
     @server.grant oauth2orize.grant.code (client, redirectURI, user, ares, done)=>
-      code = uid()
-      grant = new @db.grant {
-        code
-        redirectURI
-        client: client.id
-        user: user.id
-      }
-
-      grant.save (err)->
-        return done err if err
-        done null, code
+      @issueGrantCode client, redirectURI, user, ares, done
 
     ## grant implicit token
     @server.grant oauth2orize.grant.token (client, user, ares, done)=>
-      code = uid()
-      accessToken = new @db.accessToken {
-        token: code
-        client: client.clientId
-        user: user.id
-      }
-
-      accessToken.save (err)->
-        return done err if err
-        done null, code
+      @issueImplicitToken client, user, ares, done
 
     ## exchange grant for access token
     @server.exchange oauth2orize.exchange.code (client, code, redirectURI, done)=>
-      @db.grant.findOne {code}, (err, grant)=>
-        return done err if err
-        return done err, false if client.id isnt grant.client or redirectURI isnt grant.redirectURI
-
-        token = uid()
-        accessToken = new @db.accessToken {
-          token
-          user: grant.user
-          client: grant.client
-        }
-
-        accessToken.save (err)->
-          return done err if err
-          done null, token
+      @exchangeCodeForToken client, code, redirectURI, done
 
     ## exchange id/password for access token
     @server.exchange oauth2orize.exchange.password (client, username, password, scope, done)=>
-      fibrous.run =>
-        ## validating client
-        clientId = client.clientId
-        clientSecret = client.clientSecret
-        localClient = @db.client.sync.find clientId
-
-        return false unless localClient?.clientSecret is clientSecret
-
-        ## validating user
-        user = @db.user.sync.find username
-        return false unless user?.password is password
-
-        ## response a access token
-        token = uid()
-        accessToken = new @db.accessToken {
-          token
-          user: user.id
-          client: clientId
-        }
-
-        accessToken.save()
-        return token
-      , done
-
-  ## serialize client into session storage (can be overwrite)
-  serialize: (client, done)-> done null, client.id
-
-  ## deserialize client from session storage (can be overwrite)
-  deserialize: (id, done)->
-    ## get client (consumer)
-    @db.client.findById id, (err, client)->
-      return done err if err
-      done null, client
-
+      @exchangePasswordForToken client, username, password, scope, done
 
   authorization: ->
     [
       ensureLogin.ensureLoggedIn()
-
-      @server.authorization (clientId, redirectURI, done)=>
-        @db.client.findOne {clientId}, (err, client)->
-          return done err if err
-          ## WARNING: For security purposes, it is highly advisable to check that
-          ##          redirectURI provided by the client matches one registered with
-          ##          the server.  For simplicity, this example does not.  You have
-          ##          been warned.
-          done null, client, redirectURI
-
+      @server.authorization (clientId, redirectURI, done)=> @findClient clientId, redirectURI, done
       @renderFunction
     ]
 
@@ -157,7 +68,7 @@ class Provider
 
   token: ->
     [
-      passport.authenticate(['basic', 'oauth2-client-password'], { session: false }),
+      passport.authenticate(@exchangeMethods, { session: false }),
       @server.token(),
       @server.errorHandler()
     ]

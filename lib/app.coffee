@@ -21,7 +21,7 @@ model=
 
 require('./init-data.coffee') mongoose, ()->
 
-Provider = require '../oauth-provider/provider.coffee'
+Provider = require './custom-oauth-provider.coffee'
 provider = new Provider {}
 
 ## routes
